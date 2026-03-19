@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code IO</title>
+    <!-- CDN Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript"></script>
+    <style>
+        /* Basic styles for editors and containers */
+        body { font-family: Arial, sans-serif; }
+        #editor { width: 100%; height: 400px; }
+        #console { border: 1px solid #ccc; height: 200px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Code IO</h1>
+    <div id="editor">// Write your code here...</div>
+    <button id="run">Run Code</button>
+    <div id="console"></div>
+    <script>
+        // Basic setup for the code editor
+        var editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/javascript");
+
+        // Function to safely execute user code with security measures
+        function safeExecute(code) {
+            const worker = new Worker(URL.createObjectURL(new Blob([
+                `self.onmessage = function(e) {` + 
+                `try {` + 
+                `    ${code}` + 
+                `} catch (err) {` + 
+                `    postMessage({ error: err.message });` + 
+                `}` + 
+                `};`
+            ], { type: 'application/javascript' })));
+            worker.postMessage('start');
+            worker.onmessage = function(e) {
+                const msg = e.data;
+                if (msg.error) {
+                    document.getElementById('console').innerHTML += `<p>Error: ${msg.error}</p>`;
+                } else {
+                    document.getElementById('console').innerHTML += `<p>Output: ${msg}</p>`;
+                }
+            };
+
+            // Timeout handling
+            setTimeout(() => {
+                worker.terminate();
+                document.getElementById('console').innerHTML += `<p>Execution timed out.</p>`;
+            }, 2000); // 2 seconds timeout
+        }
+
+        // Button click to run code
+        document.getElementById('run').onclick = function() {
+            const code = editor.getValue();
+            safeExecute(code);
+        };
+    </script>
+</body>
+</html>
